@@ -32,6 +32,7 @@ import org.spongepowered.api.Sponge;
 import org.spongepowered.api.entity.living.player.Player;
 import org.spongepowered.api.event.Listener;
 import org.spongepowered.api.event.Order;
+import org.spongepowered.api.event.game.GameReloadEvent;
 import org.spongepowered.api.event.game.state.GameStartedServerEvent;
 import org.spongepowered.api.event.network.ClientConnectionEvent;
 import org.spongepowered.api.plugin.PluginContainer;
@@ -50,8 +51,9 @@ public class UpdateChecker {
 	private final OreProject project;
 	private final String permission;
 
+	private final OreAPI api = new OreAPI();
+	private Task checkTask;
 	private UpdateCheckConfig config;
-	private OreAPI api;
 	private Text[] messages = new Text[0];
 
 	public UpdateChecker(Logger logger, PluginContainer plugin, ConfigurationLoader<? extends ConfigurationNode> loader, String owner, String name) {
@@ -86,6 +88,15 @@ public class UpdateChecker {
 
 	@Listener(order = Order.LATE)
 	public void onServerStarted(GameStartedServerEvent e) {
+		load();
+	}
+
+	private void load() {
+		if (this.checkTask != null) {
+			this.checkTask.cancel();
+			this.checkTask = null;
+		}
+
 		this.logger.debug("Loading update check configuration ...");
 
 		try {
@@ -100,9 +111,13 @@ public class UpdateChecker {
 		}
 
 		if (this.config.enabled) {
-			this.api = new OreAPI();
-			Task.builder().async().interval(this.config.repetitionInterval, TimeUnit.HOURS).execute(this::check).submit(this.plugin);
+			this.checkTask = Task.builder().async().interval(this.config.repetitionInterval, TimeUnit.HOURS).execute(this::check).submit(this.plugin);
 		}
+	}
+
+	@Listener(order = Order.LATE)
+	public void onGameReload(GameReloadEvent e) {
+		load();
 	}
 
 	private void check() {

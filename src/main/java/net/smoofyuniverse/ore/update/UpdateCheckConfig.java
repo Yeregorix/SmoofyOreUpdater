@@ -22,6 +22,7 @@
 
 package net.smoofyuniverse.ore.update;
 
+import com.google.common.reflect.TypeToken;
 import ninja.leaping.configurate.objectmapping.Setting;
 import ninja.leaping.configurate.objectmapping.serialize.ConfigSerializable;
 
@@ -29,14 +30,16 @@ import static java.lang.Math.max;
 
 @ConfigSerializable
 public class UpdateCheckConfig {
+	public static final TypeToken<UpdateCheckConfig> TOKEN = TypeToken.of(UpdateCheckConfig.class);
+
 	@Setting(value = "Enabled", comment = "Enable or disable automatic update checking")
 	public boolean enabled = true;
 	@Setting(value = "RepetitionInterval", comment = "Interval in hours between update checking repetitions, 0 to disable")
 	public int repetitionInterval = 12;
-	@Setting(value = "ConsoleDelay", comment = "Delay in ticks before sending a message to the console, -1 to disable message")
-	public int consoleDelay = 20;
-	@Setting(value = "PlayerDelay", comment = "Delay in ticks before sending a message after a player connection, -1 to disable message")
-	public int playerDelay = 20;
+	@Setting(value = "ConsoleDelay", comment = "Delay in milliseconds before sending a message to the console, -1 to disable message")
+	public int consoleDelay = 1000;
+	@Setting(value = "PlayerDelay", comment = "Delay in milliseconds before sending a message after a player connection, -1 to disable message")
+	public int playerDelay = 1000;
 
 	public void normalize() {
 		this.repetitionInterval = max(this.repetitionInterval, 0);
@@ -45,21 +48,5 @@ public class UpdateCheckConfig {
 
 		if (this.consoleDelay == -1 && this.playerDelay == -1)
 			this.enabled = false;
-	}
-
-	public Immutable toImmutable() {
-		return new Immutable(this.enabled, this.repetitionInterval, this.consoleDelay, this.playerDelay);
-	}
-
-	public static class Immutable {
-		public final boolean enabled;
-		public final int repetitionInterval, consoleDelay, playerDelay;
-
-		public Immutable(boolean enabled, int repetitionInterval, int consoleDelay, int playerDelay) {
-			this.enabled = enabled;
-			this.repetitionInterval = repetitionInterval;
-			this.consoleDelay = consoleDelay;
-			this.playerDelay = playerDelay;
-		}
 	}
 }

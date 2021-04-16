@@ -25,6 +25,8 @@ package net.smoofyuniverse.ore.update;
 import net.smoofyuniverse.ore.OreAPI;
 import net.smoofyuniverse.ore.project.OreProject;
 import net.smoofyuniverse.ore.project.OreVersion;
+import ninja.leaping.configurate.ConfigurationNode;
+import ninja.leaping.configurate.loader.ConfigurationLoader;
 import org.slf4j.Logger;
 import org.spongepowered.api.Sponge;
 import org.spongepowered.api.entity.living.player.Player;
@@ -43,16 +45,17 @@ import java.util.concurrent.TimeUnit;
 
 public class UpdateChecker {
 	private final Logger logger;
-	private final UpdateCheckConfig.Immutable config;
 	private final PluginContainer plugin;
+	private final ConfigurationLoader<? extends ConfigurationNode> loader;
 	private final OreProject project;
 	private final String permission;
 
+	private UpdateCheckConfig config;
 	private OreAPI api;
 	private Text[] messages = new Text[0];
 
-	public UpdateChecker(Logger logger, UpdateCheckConfig.Immutable config, PluginContainer plugin, String owner, String name) {
-		this(logger, config, plugin, new OreProject(plugin.getId()), plugin.getId() + ".update.notify");
+	public UpdateChecker(Logger logger, PluginContainer plugin, ConfigurationLoader<? extends ConfigurationNode> loader, String owner, String name) {
+		this(logger, plugin, loader, new OreProject(plugin.getId()), plugin.getId() + ".update.notify");
 		if (owner == null || owner.isEmpty())
 			throw new IllegalArgumentException("owner");
 		if (name == null || name.isEmpty())
@@ -62,20 +65,20 @@ public class UpdateChecker {
 		this.project.name = name;
 	}
 
-	public UpdateChecker(Logger logger, UpdateCheckConfig.Immutable config, PluginContainer plugin, OreProject project, String permission) {
+	public UpdateChecker(Logger logger, PluginContainer plugin, ConfigurationLoader<? extends ConfigurationNode> loader, OreProject project, String permission) {
 		if (logger == null)
 			throw new IllegalArgumentException("logger");
-		if (config == null)
-			throw new IllegalArgumentException("config");
 		if (plugin == null)
 			throw new IllegalArgumentException("plugin");
+		if (loader == null)
+			throw new IllegalArgumentException("loader");
 		if (project == null)
 			throw new IllegalArgumentException("project");
 		if (permission == null || permission.isEmpty())
 			throw new IllegalArgumentException("permission");
 
 		this.logger = logger;
-		this.config = config;
+		this.loader = loader;
 		this.plugin = plugin;
 		this.project = project;
 		this.permission = permission;
@@ -83,13 +86,26 @@ public class UpdateChecker {
 
 	@Listener(order = Order.LATE)
 	public void onServerStarted(GameStartedServerEvent e) {
+		this.logger.debug("Loading update check configuration ...");
+
+		try {
+			ConfigurationNode root = this.loader.load();
+			this.config = root.getValue(UpdateCheckConfig.TOKEN);
+			this.config.normalize();
+			root.setValue(UpdateCheckConfig.TOKEN, this.config);
+			this.loader.save(root);
+		} catch (Exception ex) {
+			this.logger.error("Failed to load update check configuration", ex);
+			return;
+		}
+
 		if (this.config.enabled) {
 			this.api = new OreAPI();
 			Task.builder().async().interval(this.config.repetitionInterval, TimeUnit.HOURS).execute(this::check).submit(this.plugin);
 		}
 	}
 
-	public void check() {
+	private void check() {
 		String version = this.plugin.getVersion().orElse(null);
 		if (version == null)
 			return;
@@ -119,7 +135,7 @@ public class UpdateChecker {
 			}
 
 			if (this.config.consoleDelay != -1) {
-				Task.builder().delayTicks(this.config.consoleDelay)
+				Task.builder().delay(this.config.consoleDelay, TimeUnit.MILLISECONDS)
 						.execute(() -> Sponge.getServer().getConsole().sendMessage(msg1)).submit(this.plugin);
 			}
 
@@ -134,7 +150,8 @@ public class UpdateChecker {
 		if (this.messages.length != 0) {
 			Player p = e.getTargetEntity();
 			if (p.hasPermission(this.permission)) {
-				Task.builder().delayTicks(this.config.playerDelay).execute(() -> p.sendMessages(messages)).submit(this.plugin);
+				Task.builder().delay(this.config.playerDelay, TimeUnit.MILLISECONDS)
+						.execute(() -> p.sendMessages(messages)).submit(this.plugin);
 			}
 		}
 	}

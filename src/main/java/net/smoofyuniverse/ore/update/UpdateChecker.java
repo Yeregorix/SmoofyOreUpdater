@@ -102,7 +102,12 @@ public class UpdateChecker {
 		try {
 			ConfigurationNode root = this.loader.load();
 			this.config = root.getValue(UpdateCheckConfig.TOKEN);
-			this.config.normalize();
+
+			if (this.config == null)
+				this.config = new UpdateCheckConfig();
+			else
+				this.config.normalize();
+
 			root.setValue(UpdateCheckConfig.TOKEN, this.config);
 			this.loader.save(root);
 		} catch (Exception ex) {

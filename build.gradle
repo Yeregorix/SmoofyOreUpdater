@@ -21,15 +21,24 @@
  */
 
 plugins {
-    id 'java'
-    id 'maven'
+    id 'java-library'
+    id 'maven-publish'
 }
 
 group 'net.smoofyuniverse'
 version '1.1.0-SNAPSHOT'
 
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(8)
+    }
+    withJavadocJar()
+    withSourcesJar()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = "utf-8"
+}
 
 repositories {
     mavenCentral()
@@ -40,71 +49,63 @@ repositories {
 }
 
 dependencies {
-    compile 'net.smoofyuniverse:oreapi:1.0.1'
-    compile 'org.spongepowered:spongeapi:7.3.0'
+    api 'net.smoofyuniverse:oreapi:1.0.1'
+    api 'org.spongepowered:spongeapi:7.3.0'
 }
 
-task javadocJar(type: Jar) {
-    classifier = 'javadoc'
-    from javadoc
-}
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            artifactId = 'oreupdater'
+            from components.java
 
-task sourcesJar(type: Jar) {
-    classifier = 'sources'
-    from sourceSets.main.allSource
-}
-
-artifacts {
-    archives javadocJar, sourcesJar
-}
-
-if (project.hasProperty("signing.keyId")) {
-    apply plugin: 'signing'
-    signing {
-        sign configurations.archives
-    }
-}
-
-uploadArchives {
-    repositories {
-        mavenDeployer {
-            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
-
-            repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
-                authentication(userName: findProperty('ossrhUsername'), password: findProperty('ossrhPassword'))
-            }
-
-            snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
-                authentication(userName: findProperty('ossrhUsername'), password: findProperty('ossrhPassword'))
-            }
-
-            pom.project {
-                name 'SmoofyOreUpdater'
-                packaging 'jar'
-                description "An update checker using Ore API."
-                url 'https://github.com/Yeregorix/SmoofyOreUpdater'
+            pom {
+                name = 'SmoofyOreUpdater'
+                packaging = 'jar'
+                description = "An update checker using Ore API."
+                url = 'https://github.com/Yeregorix/SmoofyOreUpdater'
 
                 scm {
-                    connection 'scm:git:https://github.com/Yeregorix/SmoofyOreUpdater.git'
-                    developerConnection 'scm:git:https://github.com/Yeregorix/SmoofyOreUpdater.git'
-                    url 'https://github.com/Yeregorix/SmoofyOreUpdater'
+                    connection = 'scm:git:https://github.com/Yeregorix/SmoofyOreUpdater.git'
+                    developerConnection = 'scm:git:https://github.com/Yeregorix/SmoofyOreUpdater.git'
+                    url = 'https://github.com/Yeregorix/SmoofyOreUpdater'
                 }
 
                 licenses {
                     license {
-                        name 'MIT License'
-                        url 'https://opensource.org/licenses/MIT'
+                        name = 'MIT License'
+                        url = 'https://opensource.org/licenses/MIT'
                     }
                 }
 
                 developers {
                     developer {
-                        id 'Yeregorix'
-                        name 'Hugo Dupanloup'
-                        email 'yeregorix@smoofyuniverse.net'
+                        id = 'Yeregorix'
+                        name = 'Hugo Dupanloup'
+                        email = 'yeregorix@smoofyuniverse.net'
                     }
                 }
             }
         }
+    }
+
+    repositories {
+        maven {
+            url = version.endsWith('SNAPSHOT') ?
+                    "https://oss.sonatype.org/content/repositories/snapshots/"
+                    : "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
+
+            credentials {
+                username findProperty('ossrhUsername')
+                password findProperty('ossrhPassword')
+            }
+        }
+    }
+}
+
+if (project.hasProperty("signing.keyId")) {
+    apply plugin: 'signing'
+    signing {
+        sign publishing.publications.mavenJava
     }
 }

@@ -22,26 +22,27 @@
 
 package net.smoofyuniverse.ore.update;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.smoofyuniverse.ore.OreAPI;
 import net.smoofyuniverse.ore.project.OreProject;
 import net.smoofyuniverse.ore.project.OreVersion;
-import ninja.leaping.configurate.ConfigurationNode;
-import ninja.leaping.configurate.loader.ConfigurationLoader;
-import org.slf4j.Logger;
+import org.apache.logging.log4j.Logger;
+import org.spongepowered.api.Server;
 import org.spongepowered.api.Sponge;
-import org.spongepowered.api.entity.living.player.Player;
+import org.spongepowered.api.entity.living.player.server.ServerPlayer;
 import org.spongepowered.api.event.Listener;
 import org.spongepowered.api.event.Order;
-import org.spongepowered.api.event.game.GameReloadEvent;
-import org.spongepowered.api.event.game.state.GameStartedServerEvent;
-import org.spongepowered.api.event.network.ClientConnectionEvent;
-import org.spongepowered.api.plugin.PluginContainer;
+import org.spongepowered.api.event.lifecycle.RefreshGameEvent;
+import org.spongepowered.api.event.lifecycle.StartedEngineEvent;
+import org.spongepowered.api.event.network.ServerSideConnectionEvent;
+import org.spongepowered.api.scheduler.ScheduledTask;
 import org.spongepowered.api.scheduler.Task;
-import org.spongepowered.api.text.Text;
-import org.spongepowered.api.text.action.TextActions;
-import org.spongepowered.api.text.format.TextColors;
+import org.spongepowered.configurate.ConfigurationNode;
+import org.spongepowered.configurate.loader.ConfigurationLoader;
+import org.spongepowered.plugin.PluginContainer;
 
-import java.net.URL;
 import java.util.concurrent.TimeUnit;
 
 public class UpdateChecker {
@@ -52,12 +53,12 @@ public class UpdateChecker {
 	private final String permission;
 
 	private final OreAPI api = new OreAPI();
-	private Task checkTask;
+	private ScheduledTask checkTask;
 	private UpdateCheckConfig config;
-	private Text[] messages = new Text[0];
+	private Component[] messages = new Component[0];
 
 	public UpdateChecker(Logger logger, PluginContainer plugin, ConfigurationLoader<? extends ConfigurationNode> loader, String owner, String name) {
-		this(logger, plugin, loader, new OreProject(plugin.getId()), plugin.getId() + ".update.notify");
+		this(logger, plugin, loader, new OreProject(plugin.metadata().id()), plugin.metadata().id() + ".update.notify");
 		if (owner == null || owner.isEmpty())
 			throw new IllegalArgumentException("owner");
 		if (name == null || name.isEmpty())
@@ -87,7 +88,7 @@ public class UpdateChecker {
 	}
 
 	@Listener(order = Order.LATE)
-	public void onServerStarted(GameStartedServerEvent e) {
+	public void onServerStarted(StartedEngineEvent<Server> e) {
 		load();
 	}
 
@@ -101,14 +102,14 @@ public class UpdateChecker {
 
 		try {
 			ConfigurationNode root = this.loader.load();
-			this.config = root.getValue(UpdateCheckConfig.TOKEN);
+			this.config = root.get(UpdateCheckConfig.class);
 
 			if (this.config == null)
 				this.config = new UpdateCheckConfig();
 			else
 				this.config.normalize();
 
-			root.setValue(UpdateCheckConfig.TOKEN, this.config);
+			root.set(this.config);
 			this.loader.save(root);
 		} catch (Exception ex) {
 			this.logger.error("Failed to load update check configuration", ex);
@@ -116,62 +117,64 @@ public class UpdateChecker {
 		}
 
 		if (this.config.enabled) {
-			this.checkTask = Task.builder().async().interval(this.config.repetitionInterval, TimeUnit.HOURS).execute(this::check).submit(this.plugin);
+			this.checkTask = Sponge.asyncScheduler().submit(
+					Task.builder().interval(this.config.repetitionInterval, TimeUnit.HOURS).execute(this::check).plugin(this.plugin).build());
 		}
 	}
 
-	@Listener(order = Order.LATE)
-	public void onGameReload(GameReloadEvent e) {
-		load();
-	}
-
 	private void check() {
-		String version = this.plugin.getVersion().orElse(null);
-		if (version == null)
-			return;
-
-		this.logger.debug("Checking for update ..");
+		this.logger.debug("Checking for update ...");
 
 		OreVersion latestVersion = null;
 		try {
-			latestVersion = OreVersion.getLatest(this.project.getVersions(this.api), v -> v.apiVersion.charAt(0) == '7').orElse(null);
+			latestVersion = OreVersion.getLatest(this.project.getVersions(this.api), v -> v.apiVersion.charAt(0) == '8').orElse(null);
 		} catch (Exception e) {
 			this.logger.info("Failed to check for update", e);
 		}
 
+		String version = this.plugin.metadata().version();
 		if (latestVersion != null && !latestVersion.name.equals(version)) {
-			Text msg1 = Text.join(Text.of("A new version of " + this.project.name + " is available: "),
-					Text.builder(latestVersion.name).color(TextColors.AQUA).build(),
-					Text.of(". You're currently using version: "),
-					Text.builder(version).color(TextColors.AQUA).build(),
-					Text.of("."));
-
-			Text msg2;
-			try {
-				msg2 = Text.builder("Click here to open the download page.").color(TextColors.GOLD)
-						.onClick(TextActions.openUrl(new URL(latestVersion.getPage().get()))).build();
-			} catch (Exception e) {
-				msg2 = null;
-			}
+			Component msg1 = Component.join(Component.empty(),
+					Component.text("A new version of " + this.project.name + " is available: "),
+					Component.text(latestVersion.name, NamedTextColor.AQUA),
+					Component.text(". You're currently using version: "),
+					Component.text(version, NamedTextColor.AQUA),
+					Component.text("."));
 
 			if (this.config.consoleDelay != -1) {
-				Task.builder().delay(this.config.consoleDelay, TimeUnit.MILLISECONDS)
-						.execute(() -> Sponge.getServer().getConsole().sendMessage(msg1)).submit(this.plugin);
+				Sponge.server().scheduler().submit(Task.builder().delay(this.config.consoleDelay, TimeUnit.MILLISECONDS)
+						.execute(() -> Sponge.game().systemSubject().sendMessage(msg1)).plugin(this.plugin).build());
 			}
 
 			if (this.config.playerDelay != -1) {
-				this.messages = msg2 == null ? new Text[]{msg1} : new Text[]{msg1, msg2};
+				String page = latestVersion.getPage().orElse(null);
+				if (page == null) {
+					this.messages = new Component[]{msg1};
+				} else {
+					this.messages = new Component[]{msg1,
+							Component.text().content("Click here to open the download page.")
+									.color(NamedTextColor.GOLD).clickEvent(ClickEvent.openUrl(page)).build()
+					};
+				}
 			}
 		}
 	}
 
 	@Listener(order = Order.LATE)
-	public void onClientConnection(ClientConnectionEvent.Join e) {
+	public void onRefreshGame(RefreshGameEvent e) {
+		load();
+	}
+
+	@Listener(order = Order.LATE)
+	public void onPlayerJoin(ServerSideConnectionEvent.Join e) {
 		if (this.messages.length != 0) {
-			Player p = e.getTargetEntity();
+			ServerPlayer p = e.player();
 			if (p.hasPermission(this.permission)) {
-				Task.builder().delay(this.config.playerDelay, TimeUnit.MILLISECONDS)
-						.execute(() -> p.sendMessages(messages)).submit(this.plugin);
+				Sponge.server().scheduler().submit(Task.builder().delay(this.config.playerDelay, TimeUnit.MILLISECONDS)
+						.execute(() -> {
+							for (Component msg : this.messages)
+								p.sendMessage(msg);
+						}).plugin(this.plugin).build());
 			}
 		}
 	}

@@ -50,7 +50,7 @@ repositories {
 
 dependencies {
     api 'net.smoofyuniverse:oreapi:1.0.1'
-    api 'org.spongepowered:spongeapi:7.3.0'
+    api 'org.spongepowered:spongeapi:8.0.0-SNAPSHOT'
 }
 
 publishing {

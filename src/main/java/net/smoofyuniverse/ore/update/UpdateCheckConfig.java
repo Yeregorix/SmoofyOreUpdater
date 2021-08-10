@@ -22,23 +22,28 @@
 
 package net.smoofyuniverse.ore.update;
 
-import com.google.common.reflect.TypeToken;
-import ninja.leaping.configurate.objectmapping.Setting;
-import ninja.leaping.configurate.objectmapping.serialize.ConfigSerializable;
+import org.spongepowered.configurate.objectmapping.ConfigSerializable;
+import org.spongepowered.configurate.objectmapping.meta.Comment;
+import org.spongepowered.configurate.objectmapping.meta.Setting;
 
 import static java.lang.Math.max;
 
 @ConfigSerializable
 public class UpdateCheckConfig {
-	public static final TypeToken<UpdateCheckConfig> TOKEN = TypeToken.of(UpdateCheckConfig.class);
-
-	@Setting(value = "Enabled", comment = "Enable or disable automatic update checking")
+	@Comment("Enable or disable automatic update checking")
+	@Setting("Enabled")
 	public boolean enabled = true;
-	@Setting(value = "RepetitionInterval", comment = "Interval in hours between update checking repetitions, 0 to disable")
+
+	@Comment("Interval in hours between update checking repetitions, 0 to disable")
+	@Setting("RepetitionInterval")
 	public int repetitionInterval = 12;
-	@Setting(value = "ConsoleDelay", comment = "Delay in milliseconds before sending a message to the console, -1 to disable message")
+
+	@Comment("Delay in milliseconds before sending a message to the console, -1 to disable message")
+	@Setting("ConsoleDelay")
 	public int consoleDelay = 1000;
-	@Setting(value = "PlayerDelay", comment = "Delay in milliseconds before sending a message after a player connection, -1 to disable message")
+
+	@Comment("Delay in milliseconds before sending a message after a player connection, -1 to disable message")
+	@Setting("PlayerDelay")
 	public int playerDelay = 1000;
 
 	public void normalize() {

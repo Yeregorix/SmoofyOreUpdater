@@ -23,6 +23,7 @@
 package net.smoofyuniverse.ore.update;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.JoinConfiguration;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.smoofyuniverse.ore.OreAPI;
@@ -132,9 +133,9 @@ public class UpdateChecker {
 			this.logger.info("Failed to check for update", e);
 		}
 
-		String version = this.plugin.metadata().version();
+		String version = this.plugin.metadata().version().toString();
 		if (latestVersion != null && !latestVersion.name.equals(version)) {
-			Component msg1 = Component.join(Component.empty(),
+			Component msg1 = Component.join(JoinConfiguration.noSeparators(),
 					Component.text("A new version of " + this.project.name + " is available: "),
 					Component.text(latestVersion.name, NamedTextColor.AQUA),
 					Component.text(". You're currently using version: "),

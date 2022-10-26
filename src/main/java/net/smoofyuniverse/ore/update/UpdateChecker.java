@@ -45,12 +45,14 @@ import org.spongepowered.configurate.loader.ConfigurationLoader;
 import org.spongepowered.plugin.PluginContainer;
 
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 
 public class UpdateChecker {
 	private final Logger logger;
 	private final PluginContainer plugin;
 	private final ConfigurationLoader<? extends ConfigurationNode> loader;
 	private final OreProject project;
+	private final Predicate<OreVersion> predicate;
 	private final String permission;
 
 	private final OreAPI api = new OreAPI();
@@ -58,8 +60,17 @@ public class UpdateChecker {
 	private UpdateCheckConfig config;
 	private Component[] messages = new Component[0];
 
-	public UpdateChecker(Logger logger, PluginContainer plugin, ConfigurationLoader<? extends ConfigurationNode> loader, String owner, String name) {
-		this(logger, plugin, loader, new OreProject(plugin.metadata().id()), plugin.metadata().id() + ".update.notify");
+	public UpdateChecker(Logger logger, PluginContainer plugin, ConfigurationLoader<? extends ConfigurationNode> loader,
+						 String owner, String name) {
+		this(logger, plugin, loader, owner, name, "spongeapi");
+	}
+
+	public UpdateChecker(Logger logger, PluginContainer plugin, ConfigurationLoader<? extends ConfigurationNode> loader,
+						 String owner, String name, String spongeDependency) {
+		this(logger, plugin, loader,
+				new OreProject(plugin.metadata().id()),
+				v -> v.dependencies.get(spongeDependency).charAt(0) == '8',
+				plugin.metadata().id() + ".update.notify");
 		if (owner == null || owner.isEmpty())
 			throw new IllegalArgumentException("owner");
 		if (name == null || name.isEmpty())
@@ -69,7 +80,8 @@ public class UpdateChecker {
 		this.project.name = name;
 	}
 
-	public UpdateChecker(Logger logger, PluginContainer plugin, ConfigurationLoader<? extends ConfigurationNode> loader, OreProject project, String permission) {
+	public UpdateChecker(Logger logger, PluginContainer plugin, ConfigurationLoader<? extends ConfigurationNode> loader,
+						 OreProject project, Predicate<OreVersion> predicate, String permission) {
 		if (logger == null)
 			throw new IllegalArgumentException("logger");
 		if (plugin == null)
@@ -78,6 +90,8 @@ public class UpdateChecker {
 			throw new IllegalArgumentException("loader");
 		if (project == null)
 			throw new IllegalArgumentException("project");
+		if (predicate == null)
+			throw new IllegalArgumentException("predicate");
 		if (permission == null || permission.isEmpty())
 			throw new IllegalArgumentException("permission");
 
@@ -85,6 +99,7 @@ public class UpdateChecker {
 		this.loader = loader;
 		this.plugin = plugin;
 		this.project = project;
+		this.predicate = predicate;
 		this.permission = permission;
 	}
 
@@ -128,7 +143,7 @@ public class UpdateChecker {
 
 		OreVersion latestVersion = null;
 		try {
-			latestVersion = OreVersion.getLatest(this.project.getVersions(this.api), v -> v.apiVersion.charAt(0) == '8').orElse(null);
+			latestVersion = OreVersion.getLatest(this.project.getVersions(this.api), this.predicate).orElse(null);
 		} catch (Exception e) {
 			this.logger.info("Failed to check for update", e);
 		}

@@ -30,7 +30,7 @@ version '1.1.2'
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(8)
+        languageVersion = JavaLanguageVersion.of(17)
     }
     withJavadocJar()
     withSourcesJar()
@@ -49,8 +49,8 @@ repositories {
 }
 
 dependencies {
-    api 'net.smoofyuniverse:oreapi:1.0.3'
-    api 'org.spongepowered:spongeapi:8.0.0'
+    api 'net.smoofyuniverse:oreapi:1.1.0'
+    api 'org.spongepowered:spongeapi:10.0.0'
 }
 
 publishing {

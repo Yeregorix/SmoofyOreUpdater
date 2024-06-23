@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021-2022 Hugo Dupanloup (Yeregorix)
+ * Copyright (c) 2021-2024 Hugo Dupanloup (Yeregorix)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -69,7 +69,7 @@ public class UpdateChecker {
 						 String owner, String name, String spongeDependency) {
 		this(logger, plugin, loader,
 				new OreProject(plugin.metadata().id()),
-				v -> v.dependencies.get(spongeDependency).startsWith("10."),
+				v -> v.dependencies.get(spongeDependency).startsWith("11."),
 				plugin.metadata().id() + ".update.notify");
 		if (owner == null || owner.isEmpty())
 			throw new IllegalArgumentException("owner");

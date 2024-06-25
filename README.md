@@ -10,4 +10,4 @@ Examples of plugins using SmoofyOreUpdater:
 - [SmoofyDungeon](https://github.com/Yeregorix/SmoofyDungeon)
 - [GhostBuster](https://github.com/Yeregorix/GhostBuster)
 
-The project requires Java 17 to build.
+The project requires Java 21 to build.

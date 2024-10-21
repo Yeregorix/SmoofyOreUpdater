@@ -69,7 +69,7 @@ public class UpdateChecker {
 						 String owner, String name, String spongeDependency) {
 		this(logger, plugin, loader,
 				new OreProject(plugin.metadata().id()),
-				v -> v.dependencies.get(spongeDependency).startsWith("11."),
+				v -> v.dependencies.get(spongeDependency).startsWith("12."),
 				plugin.metadata().id() + ".update.notify");
 		if (owner == null || owner.isEmpty())
 			throw new IllegalArgumentException("owner");

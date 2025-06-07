@@ -30,6 +30,7 @@ import net.smoofyuniverse.ore.OreAPI;
 import net.smoofyuniverse.ore.project.OreProject;
 import net.smoofyuniverse.ore.project.OreVersion;
 import org.apache.logging.log4j.Logger;
+import org.spongepowered.api.Platform;
 import org.spongepowered.api.Server;
 import org.spongepowered.api.Sponge;
 import org.spongepowered.api.entity.living.player.server.ServerPlayer;
@@ -62,14 +63,14 @@ public class UpdateChecker {
 
 	public UpdateChecker(Logger logger, PluginContainer plugin, ConfigurationLoader<? extends ConfigurationNode> loader,
 						 String owner, String name) {
-		this(logger, plugin, loader, owner, name, "spongeapi");
+		this(logger, plugin, loader, owner, name, Sponge.platform().container(Platform.Component.API).metadata().version().getMajorVersion());
 	}
 
 	public UpdateChecker(Logger logger, PluginContainer plugin, ConfigurationLoader<? extends ConfigurationNode> loader,
-						 String owner, String name, String spongeDependency) {
+						 String owner, String name, int apiMajor) {
 		this(logger, plugin, loader,
 				new OreProject(plugin.metadata().id()),
-				v -> v.dependencies.get(spongeDependency).startsWith("13."),
+				v -> v.dependencies.get("spongeapi").startsWith(apiMajor + "."),
 				plugin.metadata().id() + ".update.notify");
 		if (owner == null || owner.isEmpty())
 			throw new IllegalArgumentException("owner");

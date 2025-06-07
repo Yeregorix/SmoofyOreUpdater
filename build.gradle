@@ -1,6 +1,7 @@
 plugins {
     id 'java-library'
     id 'maven-publish'
+    id 'com.gradleup.nmcp' version '0.1.5'
     id 'com.diffplug.spotless' version '6.25.0'
 }
 
@@ -75,24 +76,19 @@ publishing {
             }
         }
     }
-
-    repositories {
-        maven {
-            url = version.endsWith('SNAPSHOT') ?
-                    "https://oss.sonatype.org/content/repositories/snapshots/"
-                    : "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
-
-            credentials {
-                username findProperty('ossrhUsername')
-                password findProperty('ossrhPassword')
-            }
-        }
-    }
 }
 
 if (project.hasProperty("signing.keyId")) {
     apply plugin: 'signing'
     signing {
         sign publishing.publications.mavenJava
+    }
+}
+
+nmcp {
+    centralPortal {
+        username = findProperty('centralPortalUsername')
+        password = findProperty('centralPortalPassword')
+        publishingType = "USER_MANAGED"
     }
 }
